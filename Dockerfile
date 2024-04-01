@@ -1,7 +1,11 @@
 FROM eclipse-temurin:latest
 
-COPY /target/pts-test-app-0.0.1-SNAPSHOT.jar app.jar
+WORKDIR /opt/jmeter
+COPY jmeter .
 
-EXPOSE 8080
+WORKDIR /
+COPY /target/pts-worker-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8083
 
 ENTRYPOINT ["java","-jar","/app.jar"]

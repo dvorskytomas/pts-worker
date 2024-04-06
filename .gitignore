@@ -33,3 +33,4 @@ build/
 .vscode/
 
 /jmeter
+/k6

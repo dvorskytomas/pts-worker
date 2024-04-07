@@ -1,20 +1,27 @@
-package cz.pts.ptsworker;
+package cz.pts.ptsworker.controller;
 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import cz.pts.ptsworker.dto.TestExecutionDto;
+import cz.pts.ptsworker.service.TestExecutionService;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/exec")
 public class ExecController {
 
+    private final TestExecutionService testExecutionService;
+
+    public ExecController(TestExecutionService testExecutionService) {
+        this.testExecutionService = testExecutionService;
+    }
+
     @PostMapping
-    public void executeTest(){
+    public void executeTest(@RequestBody TestExecutionDto testExecutionDto) {
+        testExecutionService.executeTest(testExecutionDto);
+    }
+
+    /*
+    @PostMapping("/jmeter")
+    public void executeTestJmeter(){
         System.out.println("Working Directory = " + System.getProperty("user.dir"));
 
         ProcessBuilder pb = new ProcessBuilder();
@@ -79,6 +86,6 @@ public class ExecController {
             }
 
         }
-    }
+    }*/
 
 }

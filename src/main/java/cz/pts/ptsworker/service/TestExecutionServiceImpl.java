@@ -44,6 +44,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
     public void executeTest(TestExecutionDto testExecutionDto) {
         logger.info("Trying to execute new test run.");
         Assert.notNull(testExecutionDto.getTestExecutionId(), "testExecutionId cannot be null");
+        Assert.hasText(testExecutionDto.getLogFileName(), "logFileName cannot be empty");
 
         if (processRunMap.containsKey(testExecutionDto.getTestExecutionId())) {
             throw new IllegalArgumentException("TestExecutionId is already in use.");
@@ -55,8 +56,9 @@ public class TestExecutionServiceImpl implements TestExecutionService {
             throw new IllegalArgumentException("Test file with name " + testExecutionDto.getTestFileName() + " not found in directory " + testExecutionDto.getToolDirectoryPath());
         }
 
-        // "cd /opt/jmeter/bin && ./jmeter -n -t firstTest.jmx -l results.jtl"
-        String command = composeCommand(testExecutionDto);
+        String finalLogFileName = testExecutionDto.getTestExecutionId() + "-" + testExecutionDto.getLogFileName();
+        logger.info("Final log file name: {}", finalLogFileName);
+        String command = composeCommand(testExecutionDto, finalLogFileName);
         logger.info("Trying to execute command: {}", command);
 
         ProcessBuilder pb = new ProcessBuilder();
@@ -96,13 +98,14 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         });
     }
 
-    private String composeCommand(TestExecutionDto dto) {
+    private String composeCommand(TestExecutionDto dto, String finalLogFileName) {
         StringBuilder sb = new StringBuilder();
         sb.append("cd ");
         sb.append(dto.getToolDirectoryPath());
         sb.append(" && ");
         sb.append(dto.getToolRunCommand());
-        return sb.toString();
+        String cmd = sb.toString();
+        return cmd.replace(dto.getLogFileName(), finalLogFileName);
     }
 
     private void printStream(Process process) {

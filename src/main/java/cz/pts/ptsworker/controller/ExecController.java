@@ -4,6 +4,8 @@ import cz.pts.ptsworker.dto.TestExecutionDto;
 import cz.pts.ptsworker.service.TestExecutionService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/exec")
 public class ExecController {
@@ -17,6 +19,16 @@ public class ExecController {
     @PostMapping
     public void executeTest(@RequestBody TestExecutionDto testExecutionDto) {
         testExecutionService.executeTest(testExecutionDto);
+    }
+
+    @GetMapping("/active")
+    public Set<String> getActiveTestIds() {
+        return testExecutionService.getActiveTestIds();
+    }
+
+    @DeleteMapping("/{executionId}")
+    public void terminateTest(@PathVariable(name = "executionId") String executionId) {
+        testExecutionService.terminateTestExecution(executionId);
     }
 
     /*

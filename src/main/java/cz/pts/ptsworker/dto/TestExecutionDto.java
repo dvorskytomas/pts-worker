@@ -2,10 +2,19 @@ package cz.pts.ptsworker.dto;
 
 public class TestExecutionDto {
 
+    private String testExecutionId;
     private String toolDirectoryPath;
     private String toolRunCommand;
     private String logFileName;
     private String testFileName;
+
+    public String getTestExecutionId() {
+        return testExecutionId;
+    }
+
+    public void setTestExecutionId(String testExecutionId) {
+        this.testExecutionId = testExecutionId;
+    }
 
     public String getToolDirectoryPath() {
         return toolDirectoryPath;

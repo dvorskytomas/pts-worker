@@ -4,9 +4,13 @@ import cz.pts.ptsworker.dto.TestExecutionDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
 import java.util.*;
@@ -16,10 +20,15 @@ public class TestExecutionServiceImpl implements TestExecutionService {
 
     private final Map<String, Process> processRunMap = Collections.synchronizedMap(new HashMap<>());
     private final TaskExecutor taskExecutor;
+    private final RestTemplate restTemplate;
+
+    // TODO tohle si sem budeme muset posílat nějak skrz property / config mapu....
+    private static final String CONTROL_NODE_BASE_URL = "http://control:8084/";
     private static final Logger logger = LoggerFactory.getLogger(TestExecutionServiceImpl.class);
 
-    public TestExecutionServiceImpl(@Qualifier("testExecutor") TaskExecutor taskExecutor) {
+    public TestExecutionServiceImpl(@Qualifier("testExecutor") TaskExecutor taskExecutor, RestTemplate restTemplate) {
         this.taskExecutor = taskExecutor;
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -94,8 +103,19 @@ public class TestExecutionServiceImpl implements TestExecutionService {
                     logger.info("Gracefully ending test execution.");
                     p.destroy();
                 }
+                // TODO send file to control node.
+                sendResultFile(testExecutionDto.getToolDirectoryPath(), finalLogFileName, testExecutionDto.getTestExecutionId());
             }
         });
+    }
+
+    private void sendResultFile(String fileDir, String resultFileName, String testExecutionId) {
+        String dir = fileDir.endsWith("/") ? fileDir : fileDir + "/";
+        FileSystemResource resource = new FileSystemResource(new File(dir + resultFileName));
+        MultiValueMap<String, Object> request = new LinkedMultiValueMap<>();
+        request.add("results", resource);
+        restTemplate.put(CONTROL_NODE_BASE_URL + "/api/test/result/file/" + testExecutionId, request);
+        logger.info("Log file with results has been sent to control node.");
     }
 
     private String composeCommand(TestExecutionDto dto, String finalLogFileName) {

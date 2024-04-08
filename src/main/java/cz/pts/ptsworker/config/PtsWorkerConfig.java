@@ -1,11 +1,13 @@
 package cz.pts.ptsworker.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @ComponentScan(basePackages = {"cz.pts.ptsworker.service", "cz.pts.ptsworker.controller"})
@@ -20,5 +22,11 @@ public class PtsWorkerConfig {
         executor.setQueueCapacity(25);
         return executor;
     }
+
+    @Bean
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder.build();
+    }
+
 
 }

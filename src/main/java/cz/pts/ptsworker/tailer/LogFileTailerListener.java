@@ -19,15 +19,18 @@ public class LogFileTailerListener extends TailerListenerAdapter {
     private final int batchSize;
     private final String controlNodeBaseUrl;
     private final String testExecutionId;
+
+    private final Integer workerNumber;
     private final List<String> lines = new ArrayList<>();
 
     private static final Logger logger = LoggerFactory.getLogger(LogFileTailerListener.class);
 
-    public LogFileTailerListener(RestTemplate restTemplate, int batchSize, String controlNodeBaseUrl, String testExecutionId) {
+    public LogFileTailerListener(RestTemplate restTemplate, int batchSize, String controlNodeBaseUrl, String testExecutionId, Integer workerNumber) {
         this.restTemplate = restTemplate;
         this.batchSize = batchSize;
         this.controlNodeBaseUrl = controlNodeBaseUrl;
         this.testExecutionId = testExecutionId;
+        this.workerNumber = workerNumber;
     }
 
     public void setControlLogFileName(String controlLogFileName) {
@@ -48,9 +51,13 @@ public class LogFileTailerListener extends TailerListenerAdapter {
 
     private void sendBatchAndClear() {
         String url = controlNodeBaseUrl + "/api/test/result/batch/" + testExecutionId;
+
+        logger.info("Setting workerNumber param {}", workerNumber);
+        url += "?workerNumber=" + workerNumber;
+
         if (controlLogFileName != null) {
             logger.info("Setting logFileName param {}", controlLogFileName);
-            url += "?logFileName=" + controlLogFileName;
+            url += "&logFileName=" + controlLogFileName;
         }
         logger.info("Trying to send file batch");
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(lines), String.class);

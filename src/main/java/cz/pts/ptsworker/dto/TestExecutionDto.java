@@ -3,6 +3,7 @@ package cz.pts.ptsworker.dto;
 public class TestExecutionDto {
 
     private String testExecutionId;
+    private Integer workerNumber;
     private String toolDirectoryPath;
     private String toolRunCommand;
     private String logFileName;
@@ -15,6 +16,14 @@ public class TestExecutionDto {
 
     public void setTestExecutionId(String testExecutionId) {
         this.testExecutionId = testExecutionId;
+    }
+
+    public Integer getWorkerNumber() {
+        return workerNumber;
+    }
+
+    public void setWorkerNumber(Integer workerNumber) {
+        this.workerNumber = workerNumber;
     }
 
     public String getToolDirectoryPath() {

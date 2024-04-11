@@ -61,6 +61,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         logger.info("Trying to execute new test run.");
         Assert.notNull(testExecutionDto.getTestExecutionId(), "testExecutionId cannot be null");
         Assert.hasText(testExecutionDto.getLogFileName(), "logFileName cannot be empty");
+        Assert.notNull(testExecutionDto.getWorkerNumber(), "Worker number cannot be null");
 
         if (testRunMap.containsKey(testExecutionDto.getTestExecutionId())) {
             throw new IllegalArgumentException("TestExecutionId is already in use.");
@@ -76,6 +77,11 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         logger.info("Final log file name: {}", finalLogFileName);
         String command = composeCommand(testExecutionDto, finalLogFileName);
         logger.info("Trying to execute command: {}", command);
+
+        // initialize holder
+        TestRunHolder testRunHolder = new TestRunHolder();
+        testRunHolder.setTestExecutionDto(testExecutionDto);
+        testRunHolder.setLogFilePath(composeLogFilePath(finalLogFileName, testExecutionDto.getToolDirectoryPath()));
 
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(
@@ -93,16 +99,11 @@ public class TestExecutionServiceImpl implements TestExecutionService {
 
                 printStream(p);
 
-                TestRunHolder testRunHolder = new TestRunHolder();
                 testRunHolder.setProcess(p);
                 testRunMap.put(testExecutionDto.getTestExecutionId(), testRunHolder);
                 // TODO novy vlakno na posilani batchu...
-                if(ResultType.LINE_BATCH.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
-                    String dir = testExecutionDto.getToolDirectoryPath();
-                    if(!testExecutionDto.getToolDirectoryPath().endsWith("/")) {
-                        dir += "/";
-                    }
-                    sendResultsBatch(testRunHolder, testExecutionDto.getResultProcessingConfig().getBatchSize(), dir + finalLogFileName, testExecutionDto.getTestExecutionId());
+                if (ResultType.LINE_BATCH.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
+                    sendResultsBatch(testRunHolder, testExecutionDto.getResultProcessingConfig().getBatchSize(), testRunHolder.getLogFilePath(), testExecutionDto.getTestExecutionId());
                 }
 
                 logger.info("Wait for is called");
@@ -120,9 +121,9 @@ public class TestExecutionServiceImpl implements TestExecutionService {
                     logger.info("Gracefully ending test execution.");
                     p.destroy();
                 }
-                // TODO send file to control node.
+
                 if (ResultType.RESULTS_FILE.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
-                    sendResultFile(testExecutionDto.getToolDirectoryPath(), finalLogFileName, testExecutionDto.getTestExecutionId());
+                    sendResultFile(testRunHolder.getLogFilePath(), testExecutionDto.getTestExecutionId(), testRunHolder.getTestExecutionDto().getWorkerNumber());
                 } else if (ResultType.LINE_BATCH.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
                     terminateBatchProcessing(testExecutionDto.getTestExecutionId());
                 }
@@ -131,25 +132,32 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         });
     }
 
+    private String composeLogFilePath(String logFileName, String logFileDir) {
+        String dir = logFileDir;
+        if (!logFileDir.endsWith("/")) {
+            dir += "/";
+        }
+        return dir + logFileName;
+    }
+
     private void terminateBatchProcessing(String testExecutionId) {
         TestRunHolder testRunHolder = testRunMap.get(testExecutionId);
-        if(testRunHolder != null) {
-            if(testRunHolder.getTailerListener() != null) {
+        if (testRunHolder != null) {
+            if (testRunHolder.getTailerListener() != null) {
                 // send current lines in batch list
                 testRunHolder.getTailerListener().flush();
             }
-            if(testRunHolder.getTailer() != null) {
+            if (testRunHolder.getTailer() != null) {
                 testRunHolder.getTailer().close();
             }
         }
     }
 
-    private void sendResultFile(String fileDir, String resultFileName, String testExecutionId) {
-        String dir = fileDir.endsWith("/") ? fileDir : fileDir + "/";
-        FileSystemResource resource = new FileSystemResource(new File(dir + resultFileName));
+    private void sendResultFile(String logFilePath, String testExecutionId, Integer workerNumber) {
+        FileSystemResource resource = new FileSystemResource(new File(logFilePath));
         MultiValueMap<String, Object> request = new LinkedMultiValueMap<>();
         request.add("results", resource);
-        restTemplate.put(CONTROL_NODE_BASE_URL + "/api/test/result/file/" + testExecutionId, request);
+        restTemplate.put(CONTROL_NODE_BASE_URL + "/api/test/result/file/" + testExecutionId + "?workerNumber=" + workerNumber, request);
         logger.info("Log file with results has been sent to control node.");
     }
 
@@ -188,10 +196,10 @@ public class TestExecutionServiceImpl implements TestExecutionService {
             // TODO logic with retries? - if the test never runs, this thread will hang here
             logger.info("Trying to find file on path: {}", filePath);
 
-            while(fs == null){
+            while (fs == null) {
                 try {
                     fs = new FileInputStream(filePath);
-                } catch (FileNotFoundException e){
+                } catch (FileNotFoundException e) {
                     logger.warn("File not found: " + e.getMessage());
                 }
                 try {
@@ -209,7 +217,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
             }
 
             // 2 tail file
-            LogFileTailerListener tailerListener = new LogFileTailerListener(restTemplate, batchSize, CONTROL_NODE_BASE_URL, testExecutionId);
+            LogFileTailerListener tailerListener = new LogFileTailerListener(restTemplate, batchSize, CONTROL_NODE_BASE_URL, testExecutionId, holder.getTestExecutionDto().getWorkerNumber());
             holder.setTailerListener(tailerListener);
             logger.info("Tailing log file.");
             Tailer tailer = Tailer.builder().setFile(filePath).setStartThread(false).setTailerListener(tailerListener).get();

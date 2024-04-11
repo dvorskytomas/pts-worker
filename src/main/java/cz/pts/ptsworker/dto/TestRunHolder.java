@@ -8,6 +8,8 @@ public class TestRunHolder {
     private Process process;
     private Tailer tailer;
     private LogFileTailerListener tailerListener;
+    private TestExecutionDto testExecutionDto;
+    private String logFilePath;
 
     public Process getProcess() {
         return process;
@@ -31,5 +33,21 @@ public class TestRunHolder {
 
     public void setTailerListener(LogFileTailerListener tailerListener) {
         this.tailerListener = tailerListener;
+    }
+
+    public TestExecutionDto getTestExecutionDto() {
+        return testExecutionDto;
+    }
+
+    public void setTestExecutionDto(TestExecutionDto testExecutionDto) {
+        this.testExecutionDto = testExecutionDto;
+    }
+
+    public String getLogFilePath() {
+        return logFilePath;
+    }
+
+    public void setLogFilePath(String logFilePath) {
+        this.logFilePath = logFilePath;
     }
 }

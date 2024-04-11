@@ -7,6 +7,7 @@ public class TestExecutionDto {
     private String toolRunCommand;
     private String logFileName;
     private String testFileName;
+    private ResultProcessingConfig resultProcessingConfig;
 
     public String getTestExecutionId() {
         return testExecutionId;
@@ -46,5 +47,13 @@ public class TestExecutionDto {
 
     public void setTestFileName(String testFileName) {
         this.testFileName = testFileName;
+    }
+
+    public ResultProcessingConfig getResultProcessingConfig() {
+        return resultProcessingConfig;
+    }
+
+    public void setResultProcessingConfig(ResultProcessingConfig resultProcessingConfig) {
+        this.resultProcessingConfig = resultProcessingConfig;
     }
 }

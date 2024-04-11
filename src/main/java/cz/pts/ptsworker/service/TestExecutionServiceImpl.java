@@ -1,6 +1,10 @@
 package cz.pts.ptsworker.service;
 
+import cz.pts.ptsworker.dto.ResultType;
 import cz.pts.ptsworker.dto.TestExecutionDto;
+import cz.pts.ptsworker.dto.TestRunHolder;
+import cz.pts.ptsworker.tailer.LogFileTailerListener;
+import org.apache.commons.io.input.Tailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,7 +22,7 @@ import java.util.*;
 @Service
 public class TestExecutionServiceImpl implements TestExecutionService {
 
-    private final Map<String, Process> processRunMap = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, TestRunHolder> testRunMap = Collections.synchronizedMap(new HashMap<>());
     private final TaskExecutor taskExecutor;
     private final RestTemplate restTemplate;
 
@@ -33,16 +37,19 @@ public class TestExecutionServiceImpl implements TestExecutionService {
 
     @Override
     public Set<String> getActiveTestIds() {
-        return processRunMap.keySet();
+        return testRunMap.keySet();
     }
 
     @Override
     public void terminateTestExecution(String executionId) {
-        Process process = processRunMap.get(executionId);
-        if (process != null) {
+        TestRunHolder testRunHolder = testRunMap.get(executionId);
+        if (testRunHolder != null && testRunHolder.getProcess() != null) {
             logger.warn("Cancelling test process forcibly!");
-            process.destroyForcibly();
-            processRunMap.remove(executionId);
+            testRunHolder.getProcess().destroyForcibly();
+
+            terminateBatchProcessing(executionId);
+
+            testRunMap.remove(executionId);
         } else {
             logger.error("ExecutionId {} not found.", executionId);
             throw new IllegalArgumentException("Test process with executionId: " + executionId + " was not found.");
@@ -55,7 +62,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         Assert.notNull(testExecutionDto.getTestExecutionId(), "testExecutionId cannot be null");
         Assert.hasText(testExecutionDto.getLogFileName(), "logFileName cannot be empty");
 
-        if (processRunMap.containsKey(testExecutionDto.getTestExecutionId())) {
+        if (testRunMap.containsKey(testExecutionDto.getTestExecutionId())) {
             throw new IllegalArgumentException("TestExecutionId is already in use.");
         }
 
@@ -86,7 +93,17 @@ public class TestExecutionServiceImpl implements TestExecutionService {
 
                 printStream(p);
 
-                processRunMap.put(testExecutionDto.getTestExecutionId(), p);
+                TestRunHolder testRunHolder = new TestRunHolder();
+                testRunHolder.setProcess(p);
+                testRunMap.put(testExecutionDto.getTestExecutionId(), testRunHolder);
+                // TODO novy vlakno na posilani batchu...
+                if(ResultType.LINE_BATCH.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
+                    String dir = testExecutionDto.getToolDirectoryPath();
+                    if(!testExecutionDto.getToolDirectoryPath().endsWith("/")) {
+                        dir += "/";
+                    }
+                    sendResultsBatch(testRunHolder, testExecutionDto.getResultProcessingConfig().getBatchSize(), dir + finalLogFileName, testExecutionDto.getTestExecutionId());
+                }
 
                 logger.info("Wait for is called");
                 p.waitFor();
@@ -104,9 +121,27 @@ public class TestExecutionServiceImpl implements TestExecutionService {
                     p.destroy();
                 }
                 // TODO send file to control node.
-                sendResultFile(testExecutionDto.getToolDirectoryPath(), finalLogFileName, testExecutionDto.getTestExecutionId());
+                if (ResultType.RESULTS_FILE.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
+                    sendResultFile(testExecutionDto.getToolDirectoryPath(), finalLogFileName, testExecutionDto.getTestExecutionId());
+                } else if (ResultType.LINE_BATCH.equals(testExecutionDto.getResultProcessingConfig().getResultType())) {
+                    terminateBatchProcessing(testExecutionDto.getTestExecutionId());
+                }
+                // TODO send test end information???
             }
         });
+    }
+
+    private void terminateBatchProcessing(String testExecutionId) {
+        TestRunHolder testRunHolder = testRunMap.get(testExecutionId);
+        if(testRunHolder != null) {
+            if(testRunHolder.getTailerListener() != null) {
+                // send current lines in batch list
+                testRunHolder.getTailerListener().flush();
+            }
+            if(testRunHolder.getTailer() != null) {
+                testRunHolder.getTailer().close();
+            }
+        }
     }
 
     private void sendResultFile(String fileDir, String resultFileName, String testExecutionId) {
@@ -144,4 +179,80 @@ public class TestExecutionServiceImpl implements TestExecutionService {
         });
 
     }
+
+    private void sendResultsBatch(TestRunHolder holder, int batchSize, String filePath, String testExecutionId) {
+        // this has to run in separate thread, because the parent thread execution would be stopped on bufferedReader.readLine() method
+        taskExecutor.execute(() -> {
+            // 1 sniff file
+            FileInputStream fs = null;
+            // TODO logic with retries? - if the test never runs, this thread will hang here
+            logger.info("Trying to find file on path: {}", filePath);
+
+            while(fs == null){
+                try {
+                    fs = new FileInputStream(filePath);
+                } catch (FileNotFoundException e){
+                    logger.warn("File not found: " + e.getMessage());
+                }
+                try {
+                    Thread.sleep(3000L);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            logger.info("File found!!!");
+            try {
+                fs.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            // 2 tail file
+            LogFileTailerListener tailerListener = new LogFileTailerListener(restTemplate, batchSize, CONTROL_NODE_BASE_URL, testExecutionId);
+            holder.setTailerListener(tailerListener);
+            logger.info("Tailing log file.");
+            Tailer tailer = Tailer.builder().setFile(filePath).setStartThread(false).setTailerListener(tailerListener).get();
+            holder.setTailer(tailer);
+            taskExecutor.execute(tailer);
+        });
+
+    }
+
+
+    /*
+    private void sendResultsBatch(int batchSize, String filePath, String testExecutionId) {
+        // this has to run in separate thread, because the parent thread execution would be stopped on bufferedReader.readLine() method
+        // TODO nemusim pouzit tailer????
+        taskExecutor.execute(() -> {
+            List<String> lines = new ArrayList<>();
+            String line;
+            String controlLogFileName = null;
+
+            try {
+                logger.info("Reading log file {}", filePath);
+                BufferedReader reader = new BufferedReader(new FileReader(filePath));
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                    if (lines.size() == batchSize) {
+                        Map<String, String> params = new HashMap<>();
+                        if (controlLogFileName != null) {
+                            logger.info("Setting logFileName param {}", controlLogFileName);
+                            params.put("logFileName", controlLogFileName);
+                        }
+                        logger.info("Trying to send file batch");
+                        ResponseEntity<String> response = restTemplate.exchange(CONTROL_NODE_BASE_URL + "/api/test/result/batch/" + testExecutionId, HttpMethod.PUT, new HttpEntity<>(lines), String.class, params);
+                        controlLogFileName = response.getBody();
+                        lines.clear();
+                    }
+                }
+
+            logger.info("READING RESULTS FILE HAS ENDED");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+    }*/
+
 }

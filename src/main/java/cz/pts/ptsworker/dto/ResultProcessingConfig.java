@@ -1,21 +1,12 @@
 package cz.pts.ptsworker.dto;
 
 public class ResultProcessingConfig {
-    private int skipLines;
     private String skipPattern;
 
     private ResultType resultType = ResultType.RESULTS_FILE;
 
     // only define on ResultType.LINES_BATCH
     private int batchSize;
-
-    public int getSkipLines() {
-        return skipLines;
-    }
-
-    public void setSkipLines(int skipLines) {
-        this.skipLines = skipLines;
-    }
 
     public String getSkipPattern() {
         return skipPattern;

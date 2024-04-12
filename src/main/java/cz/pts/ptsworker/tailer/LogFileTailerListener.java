@@ -38,22 +38,23 @@ public class LogFileTailerListener extends TailerListenerAdapter {
     }
 
     public void flush() {
-        sendBatchAndClear();
+        sendBatchAndClear(true);
     }
 
     @Override
     public void handle(String line) {
         lines.add(line);
         if (lines.size() == batchSize) {
-            sendBatchAndClear();
+            sendBatchAndClear(false);
         }
     }
 
-    private void sendBatchAndClear() {
+    private void sendBatchAndClear(boolean lastBatch) {
         String url = controlNodeBaseUrl + "/api/test/result/batch/" + testExecutionId;
 
         logger.info("Setting workerNumber param {}", workerNumber);
         url += "?workerNumber=" + workerNumber;
+        url += "&lastBatch=" + lastBatch;
 
         if (controlLogFileName != null) {
             logger.info("Setting logFileName param {}", controlLogFileName);

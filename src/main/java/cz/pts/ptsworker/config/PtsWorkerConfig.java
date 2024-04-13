@@ -10,7 +10,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@ComponentScan(basePackages = {"cz.pts.ptsworker.service", "cz.pts.ptsworker.controller"})
+@ComponentScan(basePackages = {"cz.pts.ptsworker.service", "cz.pts.ptsworker.service.result", "cz.pts.ptsworker.controller"})
 public class PtsWorkerConfig {
 
     @Bean

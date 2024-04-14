@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pts-worker
+  namespace: default
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      pts-worker: web
+  template:
+    metadata:
+      labels:
+        pts-worker: web
+    spec:
+      containers:
+        - name: pts-worker
+          image: pts/worker:latest
+          imagePullPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: default
+spec:
+#  type: NodePort
+  selector:
+    pts-worker: web
+  clusterIP: None
+  ports:
+    - port: 8083
+      targetPort: 8083
+#      nodePort: 30003

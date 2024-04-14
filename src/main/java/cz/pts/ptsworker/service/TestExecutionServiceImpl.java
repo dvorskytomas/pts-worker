@@ -41,18 +41,16 @@ public class TestExecutionServiceImpl implements TestExecutionService {
     }
 
     @Override
-    public void terminateTestExecution(String executionId) {
-        TestRunHolder testRunHolder = testRunMap.get(executionId);
+    public void terminateTestExecution(String testExecutionId) {
+        TestRunHolder testRunHolder = testRunMap.get(testExecutionId);
         if (testRunHolder != null && testRunHolder.getProcess() != null) {
             logger.warn("Cancelling test process forcibly!");
             testRunHolder.getProcess().destroyForcibly();
 
-            terminateBatchProcessing(executionId);
-
-            testRunMap.remove(executionId);
+            testRunMap.remove(testExecutionId);
         } else {
-            logger.error("ExecutionId {} not found.", executionId);
-            throw new IllegalArgumentException("Test process with executionId: " + executionId + " was not found.");
+            logger.error("ExecutionId {} not found.", testExecutionId);
+            throw new IllegalArgumentException("Test process with executionId: " + testExecutionId + " was not found.");
         }
     }
 
@@ -125,6 +123,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
                     p.destroy();
                 }
 
+                //logger.info("CALLING ON TEST END!");
                 resultProcessor.onTestEnd(testRunHolder);
                 // testEnd + cleanup
                 String testEndUrl = CONTROL_NODE_BASE_URL + "/api/test/end/{testExecutionId}?workerNumber={workerNumber}";
@@ -140,19 +139,6 @@ public class TestExecutionServiceImpl implements TestExecutionService {
             dir += "/";
         }
         return dir + logFileName;
-    }
-
-    private void terminateBatchProcessing(String testExecutionId) {
-        TestRunHolder testRunHolder = testRunMap.get(testExecutionId);
-        if (testRunHolder != null) {
-            if (testRunHolder.getTailerListener() != null) {
-                // send current lines in batch list
-                testRunHolder.getTailerListener().flush();
-            }
-            if (testRunHolder.getTailer() != null) {
-                testRunHolder.getTailer().close();
-            }
-        }
     }
 
     private void printStream(Process process) {

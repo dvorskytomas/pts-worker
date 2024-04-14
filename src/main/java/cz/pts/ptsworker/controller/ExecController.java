@@ -26,78 +26,9 @@ public class ExecController {
         return testExecutionService.getActiveTestIds();
     }
 
-    @DeleteMapping("/{executionId}")
-    public void terminateTest(@PathVariable(name = "executionId") String executionId) {
+    @DeleteMapping("/{testExecutionId}")
+    public void terminateTest(@PathVariable(name = "testExecutionId") String executionId) {
         testExecutionService.terminateTestExecution(executionId);
     }
-
-    /*
-    @PostMapping("/jmeter")
-    public void executeTestJmeter(){
-        System.out.println("Working Directory = " + System.getProperty("user.dir"));
-
-        ProcessBuilder pb = new ProcessBuilder();
-        pb.command(
-                "/usr/bin/sh",
-                "-c",
-                "cd /opt/jmeter/bin && ./jmeter -n -t firstTest.jmx -l results.jtl"
-        );
-        pb.redirectErrorStream(true);
-
-        Thread t = new Thread(() -> {
-            Process p;
-            try {
-                System.out.println("Starting process builder in different thread.");
-                p = pb.start();
-
-                printStream(p.getInputStream());
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        t.start();
-    }
-
-    @PostMapping("/k6")
-    public void executeTestk6(){
-        System.out.println("Working Directory = " + System.getProperty("user.dir"));
-
-        ProcessBuilder pb = new ProcessBuilder();
-        pb.command(
-                "/usr/bin/sh",
-                "-c",
-                "cd /opt/k6 && ./k6 run --vus 1 --duration 30s firstTest.js --out csv=results.csv"
-        );
-        pb.redirectErrorStream(true);
-
-        Thread t = new Thread(() -> {
-            Process p;
-            try {
-                System.out.println("Starting process builder in different thread.");
-                p = pb.start();
-
-                printStream(p.getInputStream());
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        t.start();
-    }
-
-    private void printStream(InputStream inputStream) throws IOException {
-        try(BufferedReader bufferedReader = new BufferedReader(
-                new InputStreamReader(inputStream)
-        )) {
-            String line;
-            while((line = bufferedReader.readLine()) != null) {
-                System.out.println(line);
-            }
-
-        }
-    }*/
 
 }

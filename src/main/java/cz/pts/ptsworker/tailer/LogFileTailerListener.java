@@ -19,7 +19,6 @@ public class LogFileTailerListener extends TailerListenerAdapter {
     private final int batchSize;
     private final String controlNodeBaseUrl;
     private final String testExecutionId;
-
     private final Integer workerNumber;
     private final List<String> lines = new ArrayList<>();
 
@@ -33,10 +32,6 @@ public class LogFileTailerListener extends TailerListenerAdapter {
         this.workerNumber = workerNumber;
     }
 
-    public void setControlLogFileName(String controlLogFileName) {
-        this.controlLogFileName = controlLogFileName;
-    }
-
     public void flush() {
         sendBatchAndClear(true);
     }
@@ -47,6 +42,10 @@ public class LogFileTailerListener extends TailerListenerAdapter {
         if (lines.size() == batchSize) {
             sendBatchAndClear(false);
         }
+    }
+
+    private void setControlLogFileName(String controlLogFileName) {
+        this.controlLogFileName = controlLogFileName;
     }
 
     private void sendBatchAndClear(boolean lastBatch) {

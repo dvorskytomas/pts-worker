@@ -63,5 +63,4 @@ public class ResultsFileProcessor implements ResultProcessorService {
         restTemplate.put(CONTROL_NODE_BASE_URL + "/api/test/result/file/" + testRunHolder.getTestExecutionDto().getTestExecutionId() + "?workerNumber=" + testRunHolder.getTestExecutionDto().getWorkerNumber(), request);
         logger.info("Log file with results has been sent to control node.");
     }
-
 }

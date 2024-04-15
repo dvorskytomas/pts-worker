@@ -7,6 +7,7 @@ import cz.pts.ptsworker.service.result.ResultProcessorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -18,13 +19,14 @@ import java.util.*;
 @Service
 public class TestExecutionServiceImpl implements TestExecutionService {
 
+    @Value("${control.base.url}")
+    private String controlNodeBaseUrl;
+
     private final Map<String, TestRunHolder> testRunMap = Collections.synchronizedMap(new HashMap<>());
     private final TaskExecutor taskExecutor;
     private final RestTemplate restTemplate;
     private final List<ResultProcessorService> resultProcessorServices;
 
-    // TODO tohle si sem budeme muset posílat nějak skrz property / config mapu....
-    private static final String CONTROL_NODE_BASE_URL = "http://control:8084/";
     private static final Logger logger = LoggerFactory.getLogger(TestExecutionServiceImpl.class);
 
     public TestExecutionServiceImpl(@Qualifier("testExecutor") TaskExecutor taskExecutor,
@@ -126,7 +128,7 @@ public class TestExecutionServiceImpl implements TestExecutionService {
                 //logger.info("CALLING ON TEST END!");
                 resultProcessor.onTestEnd(testRunHolder);
                 // testEnd + cleanup
-                String testEndUrl = CONTROL_NODE_BASE_URL + "/api/test/end/{testExecutionId}?workerNumber={workerNumber}";
+                String testEndUrl = controlNodeBaseUrl + "/api/test/end/{testExecutionId}?workerNumber={workerNumber}";
                 restTemplate.postForObject(testEndUrl, null, Void.class, finalTestExecutionDto.getTestExecutionId(), finalTestExecutionDto.getWorkerNumber());
                 testRunMap.remove(finalTestExecutionDto.getTestExecutionId());
             }

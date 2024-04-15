@@ -17,6 +17,10 @@ spec:
         - name: pts-worker
           image: pts/worker:latest
           imagePullPolicy: Never
+          env:
+            - name: ARGS
+              value: >
+                --control.base.url=http://control:8084/
 ---
 apiVersion: v1
 kind: Service

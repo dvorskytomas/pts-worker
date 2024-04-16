@@ -9,6 +9,7 @@ import org.apache.commons.io.input.Tailer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -21,11 +22,11 @@ import java.io.IOException;
 @Component
 public class LineBatchFileProcessor implements ResultProcessorService {
 
+    @Value("${control.base.url}")
+    private String controlNodeBaseUrl;
+
     private final TaskExecutor taskExecutor;
     private final RestTemplate restTemplate;
-
-    // TODO tohle si sem budeme muset posílat nějak skrz property / config mapu....
-    private static final String CONTROL_NODE_BASE_URL = "http://control:8084/";
     private static final Logger logger = LoggerFactory.getLogger(LineBatchFileProcessor.class);
 
     public LineBatchFileProcessor(@Qualifier("testExecutor") TaskExecutor taskExecutor, RestTemplate restTemplate) {
@@ -84,7 +85,7 @@ public class LineBatchFileProcessor implements ResultProcessorService {
             }
 
             // 2 tail file
-            LogFileTailerListener tailerListener = new LogFileTailerListener(restTemplate, testRunHolder.getTestExecutionDto().getResultProcessingConfig().getBatchSize(), CONTROL_NODE_BASE_URL, testRunHolder.getTestExecutionDto().getTestExecutionId(), testRunHolder.getTestExecutionDto().getWorkerNumber());
+            LogFileTailerListener tailerListener = new LogFileTailerListener(restTemplate, testRunHolder.getTestExecutionDto().getResultProcessingConfig().getBatchSize(), controlNodeBaseUrl, testRunHolder.getTestExecutionDto().getTestExecutionId(), testRunHolder.getTestExecutionDto().getWorkerNumber());
             testRunHolder.setTailerListener(tailerListener);
             logger.info("Tailing log file.");
             Tailer tailer = Tailer.builder().setFile(testRunHolder.getLogFilePath()).setStartThread(false).setTailerListener(tailerListener).get();

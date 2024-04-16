@@ -6,6 +6,7 @@ import cz.pts.ptsworker.dto.TestRunHolder;
 import cz.pts.ptsworker.util.TestExecutionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -18,10 +19,10 @@ import java.io.File;
 @Component
 public class ResultsFileProcessor implements ResultProcessorService {
 
-    private final RestTemplate restTemplate;
+    @Value("${control.base.url}")
+    private String controlNodeBaseUrl;
 
-    // TODO tohle plnit z config mapy nebo na vstupu pri spousteni....
-    private static final String CONTROL_NODE_BASE_URL = "http://control:8084/";
+    private final RestTemplate restTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(ResultsFileProcessor.class);
 
@@ -60,7 +61,7 @@ public class ResultsFileProcessor implements ResultProcessorService {
         FileSystemResource resource = new FileSystemResource(new File(testRunHolder.getLogFilePath()));
         MultiValueMap<String, Object> request = new LinkedMultiValueMap<>();
         request.add("results", resource);
-        restTemplate.put(CONTROL_NODE_BASE_URL + "/api/test/result/file/" + testRunHolder.getTestExecutionDto().getTestExecutionId() + "?workerNumber=" + testRunHolder.getTestExecutionDto().getWorkerNumber(), request);
+        restTemplate.put(controlNodeBaseUrl + "/api/test/result/file/" + testRunHolder.getTestExecutionDto().getTestExecutionId() + "?workerNumber=" + testRunHolder.getTestExecutionDto().getWorkerNumber(), request);
         logger.info("Log file with results has been sent to control node.");
     }
 }

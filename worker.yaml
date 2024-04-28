@@ -28,11 +28,9 @@ metadata:
   name: worker
   namespace: default
 spec:
-#  type: NodePort
   selector:
     pts-worker: web
   clusterIP: None
   ports:
     - port: 8083
       targetPort: 8083
-#      nodePort: 30003
